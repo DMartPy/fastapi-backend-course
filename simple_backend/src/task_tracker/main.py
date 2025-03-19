@@ -2,8 +2,9 @@ from http.client import HTTPException
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
+import requests
 
-from storage import TaskStorage
+from storage import CloudStorage
 
 app = FastAPI()
 
@@ -12,18 +13,22 @@ class Task(BaseModel):
     title: str
     status: str
 
-tasks = TaskStorage('tasks.json')
+tasks = CloudStorage('$2a$10$3xXzKoQl9Akw7iQuxSY7Debk9qvfKv7cqkKJ9qUWURQKEQvy7j4Gq', '67db396b8561e97a50ef5ca1')
 
 @app.get("/tasks", response_model=List[Task])
 def get_tasks():
     """Получить все задачи."""
-    return tasks.load_tasks()
+    return tasks.get_tasks()
 
 @app.post("/tasks", response_model=Task)
 def create_task(task: Task):
     """Создать новую задачу."""
-    current_tasks = tasks.load_tasks()
-    if any(t["id"] == task.id for t in current_tasks):
+    current_tasks = tasks.get_tasks()
+    print("Полученные данные:", current_tasks)
+    if not isinstance(current_tasks, list):
+        current_tasks = []
+    
+    if any(t.get("id") == task.id for t in current_tasks):
         raise HTTPException(status_code=400, detail="Task with this ID already exists")
     
     current_tasks.append(task.model_dump())
@@ -33,7 +38,7 @@ def create_task(task: Task):
 @app.put("/tasks/{task_id}", response_model=Task)
 def update_task(task_id: int, updated_task: Task):
     """Обновить информацию о задаче."""
-    current_tasks = tasks.load_tasks()
+    current_tasks = tasks.get_tasks()   
     for index, task in enumerate(current_tasks):
         if task["id"] == task_id:
             current_tasks[index] = updated_task.model_dump()
@@ -46,7 +51,7 @@ def update_task(task_id: int, updated_task: Task):
 @app.delete("/tasks/{task_id}", response_model=Task)
 def delete_task(task_id: int):
     """Удалить задачу."""
-    current_tasks = tasks.load_tasks()
+    current_tasks = tasks.get_tasks()
     for index, task in enumerate(current_tasks):
         if task["id"] == task_id:
             deleted_task = Task(**task)

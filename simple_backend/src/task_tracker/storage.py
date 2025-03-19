@@ -1,16 +1,22 @@
-import json
+import requests
 
-class TaskStorage:
-    def __init__(self, task_file) -> None:
-        self.storage_file = task_file
+class CloudStorage:
+    def __init__(self, api_key, bin_id):
+        self.api_key = api_key
+        self.bin_id = bin_id
+        self.base_url = "https://api.jsonbin.io/v3/b"
 
-    def load_tasks(self):
-        try:
-            with open(self.storage_file, "r") as f:
-                return json.load(f)
-        except FileNotFoundError:
-            return []
+    def get_tasks(self):
+        response = requests.get(
+            f"{self.base_url}/{self.bin_id}",
+            headers={"X-Master-Key": self.api_key}
+        )
+        return response.json()["record"]
 
     def save_tasks(self, tasks):
-        with open(self.storage_file, "w") as f:
-            json.dump(tasks, f)
+        response = requests.put(
+            f"{self.base_url}/{self.bin_id}",
+            headers={"X-Master-Key": self.api_key},
+            json=tasks
+        )
+        return response.json()["record"]
