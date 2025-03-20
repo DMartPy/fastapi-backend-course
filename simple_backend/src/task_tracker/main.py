@@ -1,10 +1,11 @@
 from http.client import HTTPException
 from fastapi import FastAPI
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import requests
 
 from storage import CloudStorage
+from llm_service import LLMService
 
 app = FastAPI()
 
@@ -12,8 +13,10 @@ class Task(BaseModel):
     id: int
     title: str
     status: str
+    recommendations: Optional[str] = None
 
 tasks = CloudStorage('$2a$10$3xXzKoQl9Akw7iQuxSY7Debk9qvfKv7cqkKJ9qUWURQKEQvy7j4Gq', '67db396b8561e97a50ef5ca1')
+llm_service = LLMService(api_key="5MrpalKTY6FkRSQ2ak02YhG-EGkxgVAz7MyDmftZ")
 
 @app.get("/tasks", response_model=List[Task])
 def get_tasks():
@@ -30,6 +33,10 @@ def create_task(task: Task):
     
     if any(t.get("id") == task.id for t in current_tasks):
         raise HTTPException(status_code=400, detail="Task with this ID already exists")
+    
+    recommendations = llm_service.get_task_solution(task.title)
+    if recommendations:
+        task.recommendations = recommendations
     
     current_tasks.append(task.model_dump())
     tasks.save_tasks(current_tasks)
